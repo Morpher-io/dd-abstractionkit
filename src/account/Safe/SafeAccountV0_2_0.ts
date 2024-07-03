@@ -12,12 +12,14 @@ import {
 	Operation,
 	StateOverrideSet,
 	UserOperation,
+	DataRequirement,
 } from "../../types";
 import {
 	fetchAccountNonce,
 	createCallData,
 	fetchGasPrice,
 	getFunctionSelector,
+	getDataRequirements,
 } from "../../utils";
 import { UserOperationDummyValues, ZeroAddress } from "../../constants";
 import { SafeAccountFactory } from "../../factory/SafeAccountFactory";
@@ -131,7 +133,7 @@ export class SafeAccountV0_2_0 extends SmartAccount {
 		owners: string[],
 		overrides: InitCodeOverrides = {},
 	): string {
-		const [address, ] = SafeAccountV0_2_0.createAccountAddressAndInitCode(
+		const [address,] = SafeAccountV0_2_0.createAccountAddressAndInitCode(
 			owners,
 			overrides,
 		);
@@ -427,9 +429,9 @@ export class SafeAccountV0_2_0 extends SmartAccount {
 			throw new AbstractionKitError(
 				"BAD_DATA",
 				"Invalid calldata, should start with " +
-					SafeModuleExecutorFunctionSelector.executeUserOpWithErrorString +
-					" or " +
-					SafeModuleExecutorFunctionSelector.executeUserOp,
+				SafeModuleExecutorFunctionSelector.executeUserOpWithErrorString +
+				" or " +
+				SafeModuleExecutorFunctionSelector.executeUserOp,
 				{
 					context: {
 						callData: callData,
@@ -548,6 +550,7 @@ export class SafeAccountV0_2_0 extends SmartAccount {
 		bundlerRpc: string,
 		state_override_set?: StateOverrideSet,
 		numberOfSigners: number = 1,
+		dataRequirements: DataRequirement[] = [],
 	): Promise<[bigint, bigint, bigint]> {
 		if (numberOfSigners < 1n) {
 			throw RangeError("numberOfSigners can't be less than 1");
@@ -562,23 +565,24 @@ export class SafeAccountV0_2_0 extends SmartAccount {
 		userOperation.signature = "0xffffffffffffffffffffffff" + signatures;
 		const bundler = new Bundler(bundlerRpc);
 
-        const inputMaxFeePerGas = userOperation.maxFeePerGas
-        const inputMaxPriorityFeePerGas = userOperation.maxPriorityFeePerGas
-        userOperation.maxFeePerGas = 0n
-        userOperation.maxPriorityFeePerGas = 0n
+		const inputMaxFeePerGas = userOperation.maxFeePerGas
+		const inputMaxPriorityFeePerGas = userOperation.maxPriorityFeePerGas
+		userOperation.maxFeePerGas = 0n
+		userOperation.maxPriorityFeePerGas = 0n
 
 		const estimation = await bundler.estimateUserOperationGas(
 			userOperation,
 			this.entrypointAddress,
 			state_override_set,
+			dataRequirements,
 		);
-        userOperation.maxFeePerGas = inputMaxFeePerGas
-        userOperation.maxPriorityFeePerGas = inputMaxPriorityFeePerGas
+		userOperation.maxFeePerGas = inputMaxFeePerGas
+		userOperation.maxPriorityFeePerGas = inputMaxPriorityFeePerGas
 
 		const preVerificationGas = BigInt(estimation.preVerificationGas);
 		const verificationGasLimit =
 			BigInt(estimation.verificationGasLimit) +
-            (BigInt(numberOfSigners) * 30_000n);
+			(BigInt(numberOfSigners) * 30_000n);
 		const callGasLimit = BigInt(estimation.callGasLimit);
 
 		return [preVerificationGas, verificationGasLimit, callGasLimit];
@@ -589,7 +593,7 @@ export class SafeAccountV0_2_0 extends SmartAccount {
 	 * estimate gas limits and return a useroperation to be signed.
 	 * you can override all these values using the overrides parameter.
 	 * @param transactions - metatransaction list to be encoded
-	 * @param providerRpc - node rpc to fetch account nonce and gas prices
+	 * @param providerRpc - node rpc to fetch account nonce, gas prices and data requirements
 	 * @param bundlerRpc - bundler rpc for gas estimation
 	 * @param overrids - overrides values to change default values
 	 * @returns promise with useroperation
@@ -633,6 +637,20 @@ export class SafeAccountV0_2_0 extends SmartAccount {
 			throw RangeError("nonce can't be negative");
 		}
 
+		let requirements: DataRequirement[];
+		if (overrids.dataRequirements == null) {
+			if (!providerRpc) {
+				throw new AbstractionKitError(
+					"BAD_DATA",
+					"providerRpc cant't be null if dataRequirements is not overriden",
+				);
+			} else {
+				requirements = await getDataRequirements(providerRpc, transactions);
+			}
+		} else {
+			requirements = overrids.dataRequirements;
+		}
+
 		let callData = "0x" as string;
 		if (overrids.callData == null) {
 			if (transactions.length == 1) {
@@ -657,12 +675,12 @@ export class SafeAccountV0_2_0 extends SmartAccount {
 		) {
 			if (providerRpc != null) {
 				[maxFeePerGas, maxPriorityFeePerGas] = await fetchGasPrice(providerRpc);
-                if(maxFeePerGas == 0n){
-                    maxFeePerGas = 1n;
-                }
-                if(maxPriorityFeePerGas == 0n){
-                    maxPriorityFeePerGas = 1n;
-                }
+				if (maxFeePerGas == 0n) {
+					maxFeePerGas = 1n;
+				}
+				if (maxPriorityFeePerGas == 0n) {
+					maxPriorityFeePerGas = 1n;
+				}
 			} else {
 				throw new AbstractionKitError(
 					"BAD_DATA",
@@ -687,20 +705,20 @@ export class SafeAccountV0_2_0 extends SmartAccount {
 		maxFeePerGas =
 			overrids.maxFeePerGas ??
 			maxFeePerGas *
-				BigInt(
-					Math.floor(
-						((overrids.maxFeePerGasPercentageMultiplier ?? 0) + 100) / 100,
-					),
-				);
+			BigInt(
+				Math.floor(
+					((overrids.maxFeePerGasPercentageMultiplier ?? 0) + 100) / 100,
+				),
+			);
 		maxPriorityFeePerGas =
 			overrids.maxPriorityFeePerGas ??
 			maxPriorityFeePerGas *
-				BigInt(
-					Math.floor(
-						((overrids.maxPriorityFeePerGasPercentageMultiplier ?? 0) + 100) /
-							100,
-					),
-				);
+			BigInt(
+				Math.floor(
+					((overrids.maxPriorityFeePerGasPercentageMultiplier ?? 0) + 100) /
+					100,
+				),
+			);
 
 		const userOperation: UserOperation = {
 			...UserOperationDummyValues,
@@ -735,6 +753,7 @@ export class SafeAccountV0_2_0 extends SmartAccount {
 						bundlerRpc,
 						overrids.state_override_set,
 						overrids.numberOfSigners,
+						requirements,
 					);
 
 				userOperation.maxFeePerGas = inputMaxFeePerGas
@@ -769,31 +788,35 @@ export class SafeAccountV0_2_0 extends SmartAccount {
 		userOperation.preVerificationGas =
 			overrids.preVerificationGas ??
 			preVerificationGas *
-				BigInt(
-					Math.floor(
-						((overrids.preVerificationGasPercentageMultiplier ?? 0) + 100) /
-							100,
-					),
-				);
+			BigInt(
+				Math.floor(
+					((overrids.preVerificationGasPercentageMultiplier ?? 0) + 100) /
+					100,
+				),
+			);
 
 		userOperation.verificationGasLimit =
 			overrids.verificationGasLimit ??
 			verificationGasLimit *
-				BigInt(
-					Math.floor(
-						((overrids.verificationGasLimitPercentageMultiplier ?? 0) + 100) /
-							100,
-					),
-				);
+			BigInt(
+				Math.floor(
+					((overrids.verificationGasLimitPercentageMultiplier ?? 0) + 100) /
+					100,
+				),
+			);
 
 		userOperation.callGasLimit =
 			overrids.callGasLimit ??
 			callGasLimit *
-				BigInt(
-					Math.floor(
-						((overrids.callGasLimitPercentageMultiplier ?? 0) + 100) / 100,
-					),
-				);
+			BigInt(
+				Math.floor(
+					((overrids.callGasLimitPercentageMultiplier ?? 0) + 100) / 100,
+				),
+			);
+
+		if (requirements && requirements.length) {
+			userOperation.dataRequirements = requirements;
+		}
 
 		return userOperation;
 	}

@@ -13,6 +13,7 @@ export type UserOperation = {
 	maxPriorityFeePerGas: bigint;
 	paymasterAndData: string;
 	signature: string;
+	dataRequirements?: DataRequirement[];
 };
 
 export type AbiInputValue =
@@ -115,6 +116,12 @@ export interface MetaTransaction {
 	value: bigint;
 	data: string;
 	operation?: Operation;
+}
+
+export interface DataRequirement {
+	provider: string;
+	requester: string;
+	dataKey: string;
 }
 
 /**

@@ -10,6 +10,8 @@ import {
 	JsonRpcError,
 	GasOption,
 	JsonRpcResult,
+	MetaTransaction,
+	DataRequirement,
 } from "./types";
 import {
 	AbstractionKitError,
@@ -273,4 +275,71 @@ export function calculateUserOperationMaxGasCost(
 		useroperation.preVerificationGas;
 
 	return requiredGas * useroperation.maxFeePerGas;
+}
+
+export async function getDataRequirements(
+	rpcUrl: string,
+	transactions: MetaTransaction[],
+): Promise<DataRequirement[]> {
+	const result: DataRequirement[] = [];
+	const functionSelector = getFunctionSelector("requirements(bytes4)");
+	for (const transaction of transactions) {
+		if (transaction.data.length < 10) {
+			continue;
+		}
+		const callData = createCallData(
+			functionSelector,
+			["bytes4"],
+			[transaction.data.substring(0, 10)],
+		);
+
+		const params = [
+			{
+				from: "0x0000000000000000000000000000000000000000",
+				to: transaction.to,
+				data: callData,
+			},
+			"latest",
+		];
+
+		try {
+			const requirements = await sendJsonRpcRequest(rpcUrl, "eth_call", params);
+			if (typeof requirements === 'string') {
+				if (requirements.length < 130) {
+					continue; // possibly same signature but different function...
+				}
+				if (requirements.substring(0, 66) != '0x0000000000000000000000000000000000000000000000000000000000000020') {
+					continue; // same
+				}
+				const reqNumber = BigInt('0x' + requirements.substring(66, 130));
+				if (reqNumber * BigInt(64 * 3) + BigInt(130) != BigInt(requirements.length)) {
+					continue; // same
+				}
+				if (reqNumber == 0n) {
+					continue;
+				}
+				for (let i = 0; i < reqNumber; i++) {
+					const provider = '0x' + requirements.substring(130 + 64 * (3 * i) + 24, 130 + 64 * (3 * i + 1));
+					const requester = '0x' + requirements.substring(130 + 64 * (3 * i + 1) + 24, 130 + 64 * (3 * i + 2));
+					const dataKey = '0x' + requirements.substring(130 + 64 * (3 * i + 2), 130 + 64 * (3 * i + 3));
+					result.push({ provider, requester, dataKey });
+				}
+			} else {
+				throw new AbstractionKitError(
+					"BAD_DATA",
+					"eth_call returned ill formed data",
+					{
+						context: JSON.stringify(requirements),
+					},
+				);
+			}	
+		} catch (e) {
+			if (e instanceof AbstractionKitError && e.message.toLowerCase().includes('execution reverted')) {
+				continue; // contract is not data dependent
+			} else {
+				throw e;
+			}
+		}
+	}
+	return result;
 }

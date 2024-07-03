@@ -1,4 +1,4 @@
-import type { StateOverrideSet } from "../../types";
+import type { DataRequirement, StateOverrideSet } from "../../types";
 
 /**
  * Overrides for the "createUserOperation" function
@@ -38,6 +38,9 @@ export interface CreateUserOperationOverrides {
 	numberOfSigners?: number;
 	/** pass some state overrides for gas estimation"*/
 	state_override_set?: StateOverrideSet;
+
+	/** provide the user operation data requirements */
+	dataRequirements?: DataRequirement[];
 }
 
 /**
