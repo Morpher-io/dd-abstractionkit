@@ -48,3 +48,5 @@ export {
 } from "./types";
 
 export { ZeroAddress, UserOperationDummyValues } from "./constants";
+
+export { AbstractionKitError } from "./errors";
