@@ -217,7 +217,6 @@ export async function sendJsonRpcRequest(
 		headers: { "Content-Type": "application/json" },
 		body: raw,
 		redirect: "follow",
-		headers: { 'content-type': 'application/JSON' }
 	};
 	const fetchResult = await fetch(rpcUrl, requestOptions);
 	const response = (await fetchResult.json()) as JsonRpcResponse;
