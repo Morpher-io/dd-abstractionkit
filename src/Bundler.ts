@@ -7,6 +7,7 @@ import type {
 	UserOperationReceiptResult,
 	StateOverrideSet,
 	JsonRpcResult,
+	DataRequirement,
 } from "./types";
 import { sendJsonRpcRequest } from "./utils";
 import { AbstractionKitError, ensureError } from "./errors";
@@ -86,21 +87,38 @@ export class Bundler {
 		useroperation: UserOperationV6 | UserOperationV7,
 		entrypointAddress: string,
 		state_override_set?: StateOverrideSet,
+		dataRequirements: DataRequirement[] = [],
 	): Promise<GasEstimationResult> {
 		try {
 			let jsonRpcResult = {} as JsonRpcResult;
 			if (typeof state_override_set === "undefined") {
-				jsonRpcResult = await sendJsonRpcRequest(
-					this.rpcUrl,
-					"eth_estimateUserOperationGas",
-					[useroperation, entrypointAddress],
-				);
+				if (dataRequirements.length) {
+					jsonRpcResult = await sendJsonRpcRequest(
+						this.rpcUrl,
+						"eth_estimateDataDependentUserOperationGas",
+						[useroperation, entrypointAddress, dataRequirements],
+					);
+				} else {
+					jsonRpcResult = await sendJsonRpcRequest(
+						this.rpcUrl,
+						"eth_estimateUserOperationGas",
+						[useroperation, entrypointAddress],
+					);
+				}
 			} else {
-				jsonRpcResult = await sendJsonRpcRequest(
-					this.rpcUrl,
-					"eth_estimateUserOperationGas",
-					[useroperation, entrypointAddress, state_override_set],
-				);
+				if (dataRequirements.length) {
+					jsonRpcResult = await sendJsonRpcRequest(
+						this.rpcUrl,
+						"eth_estimateDataDependentUserOperationGas",
+						[useroperation, entrypointAddress, dataRequirements, state_override_set],
+					);
+				} else {
+					jsonRpcResult = await sendJsonRpcRequest(
+						this.rpcUrl,
+						"eth_estimateUserOperationGas",
+						[useroperation, entrypointAddress, state_override_set],
+					);
+				}
 			}
 			const res = jsonRpcResult as GasEstimationResult;
 			const gasEstimationResult: GasEstimationResult = {
@@ -134,11 +152,24 @@ export class Bundler {
 		entrypointAddress: string,
 	): Promise<string> {
 		try {
-			const jsonRpcResult = (await sendJsonRpcRequest(
-				this.rpcUrl,
-				"eth_sendUserOperation",
-				[useroperation, entrypointAddress],
-			)) as string;
+			let jsonRpcResult: string;
+			if (useroperation.dataRequirements) {
+				jsonRpcResult = (await sendJsonRpcRequest(
+					this.rpcUrl,
+					"eth_sendDataDependentUserOperation",
+					[
+						{ ...useroperation, dataRequirements: undefined },
+						entrypointAddress,
+						useroperation.dataRequirements
+					],
+				)) as string;
+			} else {
+				jsonRpcResult = (await sendJsonRpcRequest(
+					this.rpcUrl,
+					"eth_sendUserOperation",
+					[useroperation, entrypointAddress],
+				)) as string;
+			}
 			return jsonRpcResult;
 		} catch (err) {
 			const error = ensureError(err);
@@ -184,14 +215,14 @@ export class Bundler {
 				};
 
 				const bundlerGetUserOperationReceiptResult: UserOperationReceiptResult =
-					{
-						...res,
-						nonce: BigInt(res.nonce),
-						actualGasCost: BigInt(res.actualGasCost),
-						actualGasUsed: BigInt(res.actualGasUsed),
-						logs: JSON.stringify(res.logs),
-						receipt: userOperationReceipt,
-					};
+				{
+					...res,
+					nonce: BigInt(res.nonce),
+					actualGasCost: BigInt(res.actualGasCost),
+					actualGasUsed: BigInt(res.actualGasUsed),
+					logs: JSON.stringify(res.logs),
+					receipt: userOperationReceipt,
+				};
 				return bundlerGetUserOperationReceiptResult;
 			} else {
 				return null;

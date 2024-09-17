@@ -11,6 +11,7 @@ export interface BaseUserOperation {
 	maxFeePerGas: bigint;
 	maxPriorityFeePerGas: bigint;
 	signature: string;
+	dataRequirements?: DataRequirement[];
 }
 
 /**
@@ -156,6 +157,12 @@ export interface MetaTransaction {
 	value: bigint;
 	data: string;
 	operation?: Operation;
+}
+
+export interface DataRequirement {
+	provider: string;
+	requester: string;
+	dataKey: string;
 }
 
 /**

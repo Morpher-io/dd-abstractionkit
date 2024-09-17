@@ -1,4 +1,5 @@
 import { SafeAccountSingleton } from "./account/Safe/types";
+import { DataRequirement } from "./types";
 
 export const ZeroAddress = "0x0000000000000000000000000000000000000000";
 
@@ -22,6 +23,7 @@ export const BaseUserOperationDummyValues = {
 	maxFeePerGas: 0n,
 	maxPriorityFeePerGas: 0n,
 	signature: "0x",
+	dataRequirements: [] as DataRequirement[],
 };
 
 export const EIP712_SAFE_OPERATION_V6_TYPE = {

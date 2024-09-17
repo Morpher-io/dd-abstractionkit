@@ -242,7 +242,7 @@ export class SafeAccountV0_2_0 extends SafeAccount {
 	 * estimate gas limits and return a useroperation to be signed.
 	 * you can override all these values using the overrides parameter.
 	 * @param transactions - metatransaction list to be encoded
-	 * @param providerRpc - node rpc to fetch account nonce and gas prices
+	 * @param providerRpc - node rpc to fetch account nonce, gas prices and data requirements
 	 * @param bundlerRpc - bundler rpc for gas estimation
 	 * @param overrides - overrides for the default values
 	 * @returns promise with useroperation

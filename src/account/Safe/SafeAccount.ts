@@ -24,6 +24,7 @@ import {
 	BaseUserOperation,
 	UserOperationV6,
 	UserOperationV7,
+	DataRequirement,
 } from "../../types";
 import {
 	createCallData,
@@ -32,6 +33,7 @@ import {
 	fetchGasPrice,
 	sendEthCallRequest,
 	sendEthGetCodeRequest,
+	getDataRequirements,
 } from "../../utils";
 
 import {
@@ -333,9 +335,9 @@ export class SafeAccount extends SmartAccount {
 			throw new AbstractionKitError(
 				"BAD_DATA",
 				"Invalid calldata, should start with " +
-					SafeModuleExecutorFunctionSelector.executeUserOpWithErrorString +
-					" or " +
-					SafeModuleExecutorFunctionSelector.executeUserOp,
+				SafeModuleExecutorFunctionSelector.executeUserOpWithErrorString +
+				" or " +
+				SafeModuleExecutorFunctionSelector.executeUserOp,
 				{
 					context: {
 						callData: callData,
@@ -716,13 +718,13 @@ export class SafeAccount extends SmartAccount {
 			safe4337ModuleAddress,
 			safeModuleSetupddress,
 			overrides.multisendContractAddress ??
-				SafeAccount.DEFAULT_MULTISEND_CONTRACT_ADDRESS,
+			SafeAccount.DEFAULT_MULTISEND_CONTRACT_ADDRESS,
 			overrides.webAuthnSharedSigner ??
-				SafeAccount.DEFAULT_WEB_AUTHN_SHARED_SIGNER,
+			SafeAccount.DEFAULT_WEB_AUTHN_SHARED_SIGNER,
 			overrides.eip7212WebAuthnPrecompileVerifierForSharedSigner ??
-				SafeAccount.DEFAULT_WEB_AUTHN_PRECOMPILE,
+			SafeAccount.DEFAULT_WEB_AUTHN_PRECOMPILE,
 			overrides.eip7212WebAuthnContractVerifierForSharedSigner ??
-				SafeAccount.DEFAULT_WEB_AUTHN_FCLP256_VERIFIER,
+			SafeAccount.DEFAULT_WEB_AUTHN_FCLP256_VERIFIER,
 		);
 
 		let safeAccountFactory;
@@ -825,8 +827,8 @@ export class SafeAccount extends SmartAccount {
 							owner.x,
 							owner.y,
 							"0x" +
-								eip7212WebAuthnPrecompileVerifierForSharedSigner.slice(-4) +
-								eip7212WebAuthnContractVerifierForSharedSigner.slice(2),
+							eip7212WebAuthnPrecompileVerifierForSharedSigner.slice(-4) +
+							eip7212WebAuthnContractVerifierForSharedSigner.slice(2),
 						],
 					);
 
@@ -918,13 +920,13 @@ export class SafeAccount extends SmartAccount {
 			safe4337ModuleAddress,
 			safeModuleSetupddress,
 			overrides.multisendContractAddress ??
-				SafeAccount.DEFAULT_MULTISEND_CONTRACT_ADDRESS,
+			SafeAccount.DEFAULT_MULTISEND_CONTRACT_ADDRESS,
 			overrides.webAuthnSharedSigner ??
-				SafeAccount.DEFAULT_WEB_AUTHN_SHARED_SIGNER,
+			SafeAccount.DEFAULT_WEB_AUTHN_SHARED_SIGNER,
 			overrides.eip7212WebAuthnPrecompileVerifierForSharedSigner ??
-				SafeAccount.DEFAULT_WEB_AUTHN_PRECOMPILE,
+			SafeAccount.DEFAULT_WEB_AUTHN_PRECOMPILE,
 			overrides.eip7212WebAuthnContractVerifierForSharedSigner ??
-				SafeAccount.DEFAULT_WEB_AUTHN_FCLP256_VERIFIER,
+			SafeAccount.DEFAULT_WEB_AUTHN_FCLP256_VERIFIER,
 		);
 
 		let safeAccountFactory;
@@ -1006,6 +1008,7 @@ export class SafeAccount extends SmartAccount {
 			stateOverrideSet?: StateOverrideSet;
 			dummySignerSignaturePairs?: SignerSignaturePair[];
 		} = {},
+		dataRequirements: DataRequirement[] = [],
 	): Promise<[bigint, bigint, bigint]> {
 		if (overrides.dummySignerSignaturePairs != null) {
 			if (overrides.dummySignerSignaturePairs.length < 1) {
@@ -1042,6 +1045,7 @@ export class SafeAccount extends SmartAccount {
 			userOperation,
 			this.entrypointAddress,
 			overrides.stateOverrideSet,
+			dataRequirements,
 		);
 		userOperation.maxFeePerGas = inputMaxFeePerGas;
 		userOperation.maxPriorityFeePerGas = inputMaxPriorityFeePerGas;
@@ -1068,7 +1072,7 @@ export class SafeAccount extends SmartAccount {
 	 * estimate gas limits and return a useroperation to be signed.
 	 * you can override all these values using the overrides parameter.
 	 * @param transactions - metatransaction list to be encoded
-	 * @param providerRpc - node rpc to fetch account nonce and gas prices
+	 * @param providerRpc - node rpc to fetch account nonce, gas prices and data requirements
 	 * @param bundlerRpc - bundler rpc for gas estimation
 	 * @param overrides - overrides for the default values
 	 * @returns a promise with (base useroperation, factoryAddress, factoryData)
@@ -1135,7 +1139,7 @@ export class SafeAccount extends SmartAccount {
 			if (this.x == null || this.y == null) {
 				throw RangeError(
 					"Invalide account initialization with Webauthnn signer." +
-						"Webauthnn signer publickey can be null!!",
+					"Webauthnn signer publickey can be null!!",
 				);
 			}
 
@@ -1174,18 +1178,18 @@ export class SafeAccount extends SmartAccount {
 				);
 
 			const swapSingletonWithDeterministicWebAuthnVerifierOwner: MetaTransaction =
-				{
-					to: this.accountAddress,
-					value: 0n,
-					data: swapSingletonWithDeterministicWebAuthnVerifierOwnerCallData,
-				};
+			{
+				to: this.accountAddress,
+				value: 0n,
+				data: swapSingletonWithDeterministicWebAuthnVerifierOwnerCallData,
+			};
 
 			/*const clearWebauthnSharedSignerCallData = createCallData(
 				"0x0dd9692f", //configure
 				["uint256", "uint256", "uint176"],
 				[0, 0, 0],
 			);
-            
+		    
 			const clearWebauthnSharedSigner: MetaTransaction = {
 				to: webAuthnSharedSigner,
 				value: 0n,
@@ -1202,6 +1206,20 @@ export class SafeAccount extends SmartAccount {
 
 		if (nonce < 0n) {
 			throw RangeError("nonce can't be negative");
+		}
+
+		let requirements: DataRequirement[];
+		if (overrides.dataRequirements == null) {
+			if (!providerRpc) {
+				throw new AbstractionKitError(
+					"BAD_DATA",
+					"providerRpc cant't be null if dataRequirements is not overriden",
+				);
+			} else {
+				requirements = await getDataRequirements(providerRpc, transactions);
+			}
+		} else {
+			requirements = overrides.dataRequirements;
 		}
 
 		let callData = "0x" as string;
@@ -1246,7 +1264,7 @@ export class SafeAccount extends SmartAccount {
 				throw new AbstractionKitError(
 					"BAD_DATA",
 					"providerRpc cant't be null if maxFeePerGas and " +
-						"maxPriorityFeePerGas are not overriden",
+					"maxPriorityFeePerGas are not overriden",
 				);
 			}
 		}
@@ -1267,20 +1285,20 @@ export class SafeAccount extends SmartAccount {
 		maxFeePerGas =
 			overrides.maxFeePerGas ??
 			maxFeePerGas *
-				BigInt(
-					Math.floor(
-						((overrides.maxFeePerGasPercentageMultiplier ?? 0) + 100) / 100,
-					),
-				);
+			BigInt(
+				Math.floor(
+					((overrides.maxFeePerGasPercentageMultiplier ?? 0) + 100) / 100,
+				),
+			);
 		maxPriorityFeePerGas =
 			overrides.maxPriorityFeePerGas ??
 			maxPriorityFeePerGas *
-				BigInt(
-					Math.floor(
-						((overrides.maxPriorityFeePerGasPercentageMultiplier ?? 0) + 100) /
-							100,
-					),
-				);
+			BigInt(
+				Math.floor(
+					((overrides.maxPriorityFeePerGasPercentageMultiplier ?? 0) + 100) /
+					100,
+				),
+			);
 
 		const userOperation = {
 			...BaseUserOperationDummyValues,
@@ -1365,6 +1383,7 @@ export class SafeAccount extends SmartAccount {
 							stateOverrideSet: overrides.state_override_set,
 							dummySignerSignaturePairs: overrides.dummySignerSignaturePairs,
 						},
+						requirements,
 					);
 				verificationGasLimit +=
 					BigInt(dummySignerSignaturePairs.length) * 55_000n;
@@ -1375,7 +1394,7 @@ export class SafeAccount extends SmartAccount {
 				throw new AbstractionKitError(
 					"BAD_DATA",
 					"bundlerRpc cant't be null if preVerificationGas," +
-						"verificationGasLimit and callGasLimit are not overriden",
+					"verificationGasLimit and callGasLimit are not overriden",
 				);
 			}
 		}
@@ -1403,31 +1422,35 @@ export class SafeAccount extends SmartAccount {
 		userOperation.preVerificationGas =
 			overrides.preVerificationGas ??
 			preVerificationGas *
-				BigInt(
-					Math.floor(
-						((overrides.preVerificationGasPercentageMultiplier ?? 0) + 100) /
-							100,
-					),
-				);
+			BigInt(
+				Math.floor(
+					((overrides.preVerificationGasPercentageMultiplier ?? 0) + 100) /
+					100,
+				),
+			);
 
 		userOperation.verificationGasLimit =
 			overrides.verificationGasLimit ??
 			verificationGasLimit *
-				BigInt(
-					Math.floor(
-						((overrides.verificationGasLimitPercentageMultiplier ?? 0) + 100) /
-							100,
-					),
-				);
+			BigInt(
+				Math.floor(
+					((overrides.verificationGasLimitPercentageMultiplier ?? 0) + 100) /
+					100,
+				),
+			);
 
 		userOperation.callGasLimit =
 			overrides.callGasLimit ??
 			callGasLimit *
-				BigInt(
-					Math.floor(
-						((overrides.callGasLimitPercentageMultiplier ?? 0) + 100) / 100,
-					),
-				);
+			BigInt(
+				Math.floor(
+					((overrides.callGasLimitPercentageMultiplier ?? 0) + 100) / 100,
+				),
+			);
+
+		if (requirements && requirements.length) {
+			userOperation.dataRequirements = requirements;
+		}
 
 		return [userOperation, factoryAddress, factoryData];
 	}
@@ -1536,7 +1559,7 @@ export class SafeAccount extends SmartAccount {
 		) {
 			throw RangeError(
 				"Invalide precompile address. " +
-					"It should have the format 0x000000000000000000000000000000000000____",
+				"It should have the format 0x000000000000000000000000000000000000____",
 			);
 		}
 		const codeHash = keccak256(
@@ -1548,8 +1571,8 @@ export class SafeAccount extends SmartAccount {
 					x,
 					y,
 					"0x" +
-						eip7212WebAuthnPrecompileVerifier.slice(-4) +
-						eip7212WebAuthnContractVerifier.slice(2),
+					eip7212WebAuthnPrecompileVerifier.slice(-4) +
+					eip7212WebAuthnContractVerifier.slice(2),
 				],
 			),
 		);
@@ -2068,8 +2091,8 @@ export class SafeAccount extends SmartAccount {
 				x,
 				y,
 				"0x" +
-					eip7212WebAuthnPrecompileVerifier.slice(-4) +
-					eip7212WebAuthnContractVerifier.slice(2),
+				eip7212WebAuthnPrecompileVerifier.slice(-4) +
+				eip7212WebAuthnContractVerifier.slice(2),
 			],
 		);
 

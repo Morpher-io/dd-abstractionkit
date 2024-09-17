@@ -7,19 +7,13 @@
   <h3 align="center">Supported by Safe Grants</h3>
 </div>
 
-A Typescript Library to easily build and send ERC-4337 UserOperations, with first class support for Safe Accounts.
-
-AbstractionKit is agnostic of:
-- **Ethereum interface libraries**: ethers, web3.js, viem/wagmi
-- **Bundlers**: Plug and play from any bundler provider
-- **Paymasters**: Candide Paymaster is supported , but you can use any 3rd party paymaster to sponsor gas
-- **Accounts**: The Safe Account first class supported, but you can use use Bundlers and Paymasters with any account
+A modified version of the [AbstractionKit](https://github.com/candidelabs/abstractionkit) library to enable support for data-dependent user operations.
 
 ## Docs
 
-For full detailed documentation visit our [docs page](https://docs.candide.dev/wallet/abstractionkit/introduction). 
+For full detailed documentation visit the Candide [docs page](https://docs.candide.dev/wallet/abstractionkit/introduction). 
 
-## Installation
+## Installation [todo]
 
 ```bash
 npm install abstractionkit
@@ -27,62 +21,40 @@ npm install abstractionkit
 
 ## Quickstart
 
-### Safe Account
+The kit is used exaclty as the original one, refer to the original [readme](https://github.com/candidelabs/abstractionkit?tab=readme-ov-file#quickstart) for a quickstart.
 
-AbstractionKit features the Safe Account. It uses the original Safe Singleton and adds ERC-4337 functionality using a fallback handler module. The contracts have been developed by the Safe Team. It has been audited by Ackee Blockchain. To learn more about the contracts and audits, visit [safe-global/safe-modules](https://github.com/safe-global/safe-modules/tree/main/modules/4337).
+The only difference is the management of data dependent user operations. If a contract the user is interacting with requires data, the kit will make use of contract calls and special bundler endpoints to manage that. Make sure that the bundler you're connecting to supports [data-dependency](https://github.com/Morpher-io/dd-voltaire).
 
-
-```typescript
-import { SafeAccountV0_2_0 as SafeAccount } from "abstractionkit";
-
-const ownerPublicAddress = "0xBdbc5FBC9cA8C3F514D073eC3de840Ac84FC6D31";
-const smartAccount = SafeAccount.initializeNewAccount([ownerPublicAddress]);
-
-```
-Then you can consume accout methods:
-```typescript
-const safeAddress = smartAccount.accountAddress;
-```
-
-### Bundler
-
-Initialize a Bundler with your desired bundler RPC url. Find more public bundler endpoints on our [docs](https://docs.candide.dev/wallet/bundler/rpc-endpoints/)
-```typescript
-import { Bundler } from "abstractionkit";
-
-const bundlerRPC = "https://sepolia.voltaire.candidewallet.com/rpc";
-
-const bundler: Bundler = new Bundler(bundlerRPC);
-```
-Then you can consume Bundler methods:
+### Creating and sending a data-dependent user operation
 
 ```typescript
-const entrypointAddresses = await bundler.supportedEntryPoints();
+const transaction : MetaTransaction = {
+        to: yourDataDepndentContract,
+        value: 0n,
+        data: transactionCallData,
+    }
+
+// bundler will provide gas estimation on data-dependent endpoints
+// the userOperation object is also containing the data requirements
+const userOperation = await smartAccount.createUserOperation(
+        [transaction],
+        jsonRpcNodeProvider, // regular ethereum rpc for your chain
+        bundlerUrl, // must be a dd-bundler
+    )
+
+userOperation.signature = smartAccount.signUserOperation(
+        userOperation,
+        [ownerPrivateKey],
+        chainId,
+    )
+
+// correct bundler endpoint will be used according to data-dependecy
+const sendUserOperationResponse = await smartAccount.sendUserOperation(
+        userOperation, bundlerUrl
+    )
 ```
 
-### Paymaster
-Initialize a Candide Paymaster with your RPC url. Get one from the [dashboard](https://dashboard.candide.dev).
-```typescript
-import { CandidePaymaster } from "abstractionkit";
-
-const paymasterRpc = "https://api.candide.dev/paymaster/$version/$network/$apikey";
-
-const paymaster: CandidePaymaster = new CandidePaymaster(paymasterRPC);
-```
-Then you can consume Paymaster methods:
-
-```typescript
-const erc20s = await paymaster.getSupportedERC20TokensAndPaymasterMetadata();
-```
-
-## Guides
-| Title | Description
-| -----------------------------------------------------------------------------------------| -------------------------------------------------------------------------------- |
-| [Send your first user operation](https://docs.candide.dev/wallet/guides/getting-started) | Learn how to create a smart wallet and to send your first user operation         |
-| [Send a Gasless Transaction](https://docs.candide.dev/wallet/guides/send-gasless-tx)     | Learn how to send gasless transactions using a paymaster                         |
-| [Pay Gas in ERC-20](https://docs.candide.dev/wallet/guides/pay-gas-in-erc20)             | Learn how to offer the ability for users to pay gas in ERC-20s using a Paymaster |
-
-## npm package
+## npm package [todo]
 <a href="https://www.npmjs.com/package/abstractionkit">npm</a>
 
 <!-- LICENSE -->
