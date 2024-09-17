@@ -23,7 +23,7 @@ export const BaseUserOperationDummyValues = {
 	maxFeePerGas: 0n,
 	maxPriorityFeePerGas: 0n,
 	signature: "0x",
-	dataRequirements: [] as DataRequirement[],
+	dataRequirements: undefined as undefined | DataRequirement[],
 };
 
 export const EIP712_SAFE_OPERATION_V6_TYPE = {
