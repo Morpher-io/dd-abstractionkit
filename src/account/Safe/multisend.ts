@@ -1,5 +1,5 @@
 import { AbiCoder, getBytes, solidityPacked } from "ethers";
-import { MetaTransaction, Operation } from "src/types";
+import { type MetaTransaction, Operation } from "../../types";
 
 /**
  * Encodes a Metatransaction to be executed by Safe contract

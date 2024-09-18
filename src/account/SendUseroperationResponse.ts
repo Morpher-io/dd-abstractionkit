@@ -1,6 +1,6 @@
-import { Bundler } from "src/Bundler";
-import { AbstractionKitError } from "src/errors";
-import { UserOperationReceiptResult } from "src/types";
+import { Bundler } from "../Bundler";
+import { AbstractionKitError } from "../errors";
+import { UserOperationReceiptResult } from "../types";
 
 export class SendUseroperationResponse {
 	readonly userOperationHash: string;

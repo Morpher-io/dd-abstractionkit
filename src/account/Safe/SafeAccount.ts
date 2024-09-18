@@ -50,10 +50,10 @@ import {
 	BaseInitOverrides,
 } from "./types";
 import { decodeMultiSendCallData, encodeMultiSendCallData } from "./multisend";
-import { AbstractionKitError } from "src/errors";
-import { Bundler } from "src/Bundler";
+import { AbstractionKitError } from "../../errors";
+import { Bundler } from "../../Bundler";
 import { SendUseroperationResponse } from "../SendUseroperationResponse";
-import { SafeAccountFactory } from "src/factory/SafeAccountFactory";
+import { SafeAccountFactory } from "../../factory/SafeAccountFactory";
 
 export class SafeAccount extends SmartAccount {
 	static readonly DEFAULT_SAFE_SINGLETON = Safe_L2_V1_4_1;

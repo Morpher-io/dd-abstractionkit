@@ -17,9 +17,9 @@ import {
 	PrependTokenPaymasterApproveAccount,
 	CreatePaymasterUserOperationOverrides,
 } from "./types";
-import { Bundler } from "src/Bundler";
-import { AbstractionKitError, ensureError } from "src/errors";
-import { ENTRYPOINT_V7, ENTRYPOINT_V6 } from "src/constants";
+import { Bundler } from "../Bundler";
+import { AbstractionKitError, ensureError } from "../errors";
+import { ENTRYPOINT_V7, ENTRYPOINT_V6 } from "../constants";
 
 export class CandidePaymaster extends Paymaster {
 	readonly rpcUrl: string;

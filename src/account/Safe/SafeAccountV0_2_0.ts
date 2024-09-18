@@ -7,7 +7,7 @@ import {
 } from "./types";
 
 import { UserOperationV6, MetaTransaction } from "../../types";
-import { ENTRYPOINT_V6 } from "src/constants";
+import { ENTRYPOINT_V6 } from "../../constants";
 
 export class SafeAccountV0_2_0 extends SafeAccount {
 	static readonly DEFAULT_ENTRYPOINT_ADDRESS = ENTRYPOINT_V6;
