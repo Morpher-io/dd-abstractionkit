@@ -1,6 +1,6 @@
 import * as fetchImport from "isomorphic-unfetch";
 
-import { id, AbiCoder, keccak256, JsonRpcProvider } from "ethers";
+import { id, AbiCoder, keccak256, JsonRpcProvider, FeeData } from "ethers";
 
 import {
 	AbiInputValue,
@@ -252,7 +252,11 @@ export async function fetchGasPrice(
 	gasLevel: GasOption = GasOption.Medium,
 ): Promise<[bigint, bigint]> {
 	const jsonRpcProvider = new JsonRpcProvider(provideRpc);
-	const feeData = await jsonRpcProvider.getFeeData();
+	let feeData = await jsonRpcProvider.getFeeData();
+	if (!feeData.maxFeePerGas && !feeData.maxPriorityFeePerGas && feeData.gasPrice) {
+		// for some chains (eg bsc) only gasPrice is returned here
+		feeData = new FeeData(null, feeData.gasPrice, feeData.gasPrice);
+	}
 	const maxFeePerGas = BigInt(
 		Math.ceil(Number(feeData.maxFeePerGas) * gasLevel),
 	);
